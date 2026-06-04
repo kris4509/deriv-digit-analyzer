@@ -186,6 +186,15 @@ select:focus, input:focus { border-color: var(--green); }
 .mini-disc.rn{background:var(--bg3);border-color:var(--border);color:var(--text3)}
 .eo-pct-row { font-size: 10px; color: var(--text3); font-family: var(--mono); }
 
+/* UNDER 8 SCANNER — reuses .eo-* classes + these extras */
+.u8-card.valid-u8 { border-color: rgba(251,146,60,.55); background: rgba(251,146,60,.04); }
+.eo-badge.u8 { background: rgba(251,146,60,.15); color: #fb923c; }
+.eo-valid-badge.u8 { background: rgba(251,146,60,.13); border: 1px solid rgba(251,146,60,.4); color: #fb923c; }
+.u8-cond { font-size: 10px; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.u8-cond-chip { padding: 2px 6px; border-radius: 8px; font-family: var(--mono); font-size: 9px; }
+.u8-cond-chip.pass { background: rgba(34,197,94,.15); color: var(--green); }
+.u8-cond-chip.fail { background: rgba(248,113,113,.1); color: var(--red); }
+
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg2)}
@@ -244,6 +253,7 @@ select:focus, input:focus { border-color: var(--green); }
   <div class="main-tabs">
     <button class="main-tab on" onclick="switchTab('analysis')">Digit analysis</button>
     <button class="main-tab" onclick="switchTab('evenodd')">Even / Odd scanner</button>
+    <button class="main-tab" onclick="switchTab('under8')">Under 8 scanner</button>
   </div>
 
   <!-- ANALYSIS PANE -->
@@ -289,6 +299,13 @@ select:focus, input:focus { border-color: var(--green); }
         </div>
         <div class="sig-desc" id="eoDesc">Collecting ticks…</div>
       </div>
+      <div class="sig-box">
+        <div class="sig-title">Under 8 signal</div>
+        <div class="sig-pills">
+          <div class="pill" id="u8Pill">Under 8</div>
+        </div>
+        <div class="sig-desc" id="u8Desc">Collecting ticks…</div>
+      </div>
     </div>
 
     <div class="section-label">Frequency bars</div>
@@ -296,6 +313,24 @@ select:focus, input:focus { border-color: var(--green); }
 
     <div class="section-label">Recent ticks (last digit)</div>
     <div class="strip-wrap"><div class="strip" id="tickStrip"></div></div>
+  </div>
+
+  <!-- UNDER 8 PANE -->
+  <div id="pane-under8" class="tab-pane">
+    <div class="eo-summary">
+      <div class="eo-summary-title">
+        <span>Under 8 valid signals</span>
+        <span class="scan-prog" id="u8ScanProg">—</span>
+      </div>
+      <div class="eo-valid-list" id="u8ValidList">
+        <span style="font-size:12px;color:var(--text3)">Click tab to start scanning…</span>
+      </div>
+      <div class="eo-scan-note">
+        Valid Under 8 signal: <strong style="color:var(--green)">Green (rank 1)</strong> on digit 0–5 &amp; <strong style="color:#fb923c">digits 8 and 9 both below 10%</strong>. Red (rank 9) can be anywhere.
+      </div>
+    </div>
+    <div class="section-label">All markets</div>
+    <div class="eo-grid" id="u8Grid"></div>
   </div>
 
   <!-- EVEN/ODD PANE -->
@@ -385,6 +420,19 @@ function checkEOSignal(c) {
   return {type:'none', label:'No bias'};
 }
 
+function checkU8Signal(c) {
+  const tot = c.reduce((s,v)=>s+v,0);
+  if(tot < 50) return {valid:false, label:'Scanning…', pct8:0, pct9:0, greenDigit:-1};
+  const cls = getRanks(c);
+  const r1d = cls.indexOf('r1');
+  const pct8 = c[8]/tot*100;
+  const pct9 = c[9]/tot*100;
+  const greenOnLow = r1d >= 0 && r1d <= 5;
+  const both89low  = pct8 < 10 && pct9 < 10;
+  const valid = greenOnLow && both89low;
+  return { valid, label: valid ? 'Under 8 ✓' : 'No signal', pct8, pct9, greenDigit: r1d, greenOnLow, both89low };
+}
+
 // BUILD UI COMPONENTS
 function buildCatBtns() {
   const el = document.getElementById('catBtns'); el.innerHTML = '';
@@ -451,7 +499,7 @@ function updateUI() {
     const oTot = ODDS.reduce((s,d)=>s+counts[d],0);
     document.getElementById('evenPct').textContent = (eTot/tot*100).toFixed(1)+'%';
     document.getElementById('oddPct').textContent = (oTot/tot*100).toFixed(1)+'%';
-    if(tot>=50){ updateOUSignal(sorted,tot); updateEOSignal(cls); }
+    if(tot>=50){ updateOUSignal(sorted,tot); updateEOSignal(cls); updateU8Signal(); }
   }
 }
 
@@ -484,6 +532,23 @@ function updateEOSignal(cls){
   } else {
     ep.className=op.className='pill'; ep.textContent='Even'; op.textContent='Odd';
     desc.textContent='Dominant & cold digits span both sides. No clear Even/Odd bias.';
+  }
+}
+
+function updateU8Signal(){
+  const sig = checkU8Signal(counts);
+  const pill = document.getElementById('u8Pill');
+  const desc = document.getElementById('u8Desc');
+  if(!pill) return;
+  if(sig.valid){
+    pill.className='pill active-green'; pill.textContent='Under 8 ✓';
+    desc.textContent=`Green on digit ${sig.greenDigit} (0–5 ✓). Digit 8: ${sig.pct8.toFixed(1)}% & digit 9: ${sig.pct9.toFixed(1)}% — both below 10% ✓. Valid Under 8 signal.`;
+  } else {
+    pill.className='pill'; pill.textContent='Under 8';
+    const why=[];
+    if(!sig.greenOnLow) why.push(`green on digit ${sig.greenDigit} (needs 0–5)`);
+    if(!sig.both89low) why.push(`8: ${sig.pct8.toFixed(1)}%, 9: ${sig.pct9.toFixed(1)}% (both need <10%)`);
+    desc.textContent = why.length ? 'No signal — '+why.join('; ')+'.' : 'Collecting ticks…';
   }
 }
 
@@ -575,6 +640,7 @@ function switchTab(t){
   document.querySelector(`.main-tab[onclick="switchTab('${t}')"]`).classList.add('on');
   document.getElementById('pane-'+t).classList.add('on');
   if(t==='evenodd') startEOScan();
+  if(t==='under8') startU8Scan();
 }
 
 // EO SCANNER
@@ -687,6 +753,115 @@ function updateEOSummary(){
   oddSigs.forEach(s=>{
     const d=document.createElement('div'); d.className='eo-valid-badge odd';
     d.innerHTML=`<span class="badge-dot"></span>${s.n}${s.strong?' ★':''}`;
+    row.appendChild(d);
+  });
+}
+
+// UNDER 8 SCANNER
+let u8WsPool={}, u8State={}, u8ScanQueue=[], u8ScanActive=0;
+
+function buildU8Grid(){
+  const el=document.getElementById('u8Grid'); if(!el) return; el.innerHTML='';
+  ALL_SYMS.forEach(s=>{
+    const card=document.createElement('div');
+    card.className='eo-card u8-card loading'; card.id='u8card-'+s.id;
+    card.innerHTML=`<div class="eo-sym-name">${s.n}</div><span class="eo-badge scanning" id="u8badge-${s.id}">Scanning…</span><div class="eo-mini-discs" id="u8mini-${s.id}"></div><div class="u8-cond" id="u8cond-${s.id}"></div><div class="eo-pct-row" id="u8pct-${s.id}"></div>`;
+    el.appendChild(card);
+  });
+}
+
+function startU8Scan(){
+  Object.values(u8WsPool).forEach(w=>{try{w.close();}catch(e){}});
+  u8WsPool={}; u8State={};
+  ALL_SYMS.forEach(s=>{ u8State[s.id]={counts:new Array(10).fill(0),done:false,n:s.n}; });
+  buildU8Grid();
+  updateU8Summary();
+  u8ScanQueue=[...ALL_SYMS]; u8ScanActive=0;
+  for(let i=0;i<EO_PARALLEL;i++) drainU8Queue();
+}
+
+function drainU8Queue(){
+  if(u8ScanQueue.length===0) return;
+  const sym=u8ScanQueue.shift();
+  u8ScanActive++;
+  scanU8Sym(sym,()=>{ u8ScanActive--; drainU8Queue(); updateU8Summary(); });
+}
+
+function scanU8Sym(sym,cb){
+  const w=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id='+APP_ID);
+  u8WsPool[sym.id]=w;
+  w.onopen=()=>{ w.send(JSON.stringify({ticks_history:sym.id,count:maxTicks,end:'latest',style:'ticks'})); };
+  w.onmessage=e=>{
+    const m=JSON.parse(e.data);
+    if(m.msg_type==='history'&&m.history){
+      const prices=m.history.prices||[];
+      const st=u8State[sym.id];
+      prices.slice(-maxTicks).forEach(p=>{
+        const s=p.toString(),d=parseInt(s[s.length-1],10);
+        if(!isNaN(d)) st.counts[d]++;
+      });
+      st.done=true; updateU8Card(sym.id);
+      try{w.close();}catch(e){} cb();
+    } else if(m.error){
+      u8State[sym.id].done=true; u8State[sym.id].error=true;
+      updateU8Card(sym.id); try{w.close();}catch(e){} cb();
+    }
+  };
+  w.onerror=()=>{ u8State[sym.id].done=true; u8State[sym.id].error=true; updateU8Card(sym.id); try{w.close();}catch(e){} cb(); };
+  setTimeout(()=>{ if(!u8State[sym.id].done){ u8State[sym.id].done=true; u8State[sym.id].error=true; updateU8Card(sym.id); try{w.close();}catch(e){} cb(); } },12000);
+}
+
+function updateU8Card(id){
+  const st=u8State[id]; if(!st) return;
+  const card=document.getElementById('u8card-'+id);
+  const badge=document.getElementById('u8badge-'+id);
+  const mini=document.getElementById('u8mini-'+id);
+  const cond=document.getElementById('u8cond-'+id);
+  const pctEl=document.getElementById('u8pct-'+id);
+  if(!card) return;
+  card.classList.remove('loading');
+  if(st.error){ if(badge){badge.className='eo-badge neutral';badge.textContent='No data';} return; }
+  const tot=st.counts.reduce((s,v)=>s+v,0);
+  const cls=getRanks(st.counts);
+  const sig=checkU8Signal(st.counts);
+  card.className='eo-card u8-card'+(sig.valid?' valid-u8':'');
+  if(badge){ badge.className='eo-badge '+(sig.valid?'u8':'neutral'); badge.textContent=sig.label; }
+  if(mini){
+    mini.innerHTML='';
+    for(let d=0;d<=9;d++){
+      const dd=document.createElement('div'); dd.className='mini-disc '+cls[d]; dd.textContent=d;
+      mini.appendChild(dd);
+    }
+  }
+  if(cond&&tot>0){
+    const p8=st.counts[8]/tot*100, p9=st.counts[9]/tot*100;
+    const r1d=cls.indexOf('r1');
+    cond.innerHTML=`
+      <span class="u8-cond-chip ${r1d>=0&&r1d<=5?'pass':'fail'}">Green on ${r1d} ${r1d>=0&&r1d<=5?'✓':'✗'}</span>
+      <span class="u8-cond-chip ${p8<10?'pass':'fail'}">D8: ${p8.toFixed(1)}% ${p8<10?'✓':'✗'}</span>
+      <span class="u8-cond-chip ${p9<10?'pass':'fail'}">D9: ${p9.toFixed(1)}% ${p9<10?'✓':'✗'}</span>`;
+  }
+  if(pctEl&&tot>0){
+    pctEl.textContent=`${tot} ticks`;
+  }
+}
+
+function updateU8Summary(){
+  const done=ALL_SYMS.filter(s=>u8State[s.id]&&u8State[s.id].done).length;
+  const progEl=document.getElementById('u8ScanProg');
+  if(progEl) progEl.textContent=`${done}/${ALL_SYMS.length} scanned`;
+  const sigs=[];
+  ALL_SYMS.forEach(s=>{
+    const st=u8State[s.id];
+    if(st&&st.done&&!st.error){ const sig=checkU8Signal(st.counts); if(sig.valid) sigs.push(s.n); }
+  });
+  const row=document.getElementById('u8ValidList'); if(!row) return; row.innerHTML='';
+  if(sigs.length===0){
+    row.innerHTML='<span style="font-size:12px;color:var(--text3)">No valid Under 8 signals yet…</span>'; return;
+  }
+  sigs.forEach(n=>{
+    const d=document.createElement('div'); d.className='eo-valid-badge u8';
+    d.innerHTML=`<span class="badge-dot"></span>${n}`;
     row.appendChild(d);
   });
 }
