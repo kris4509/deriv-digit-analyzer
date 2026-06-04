@@ -359,25 +359,18 @@ const EVENS = [0,2,4,6,8], ODDS = [1,3,5,7,9];
 
 const MARKETS = [
   { label:'Vol 1s', syms:[
-    {id:'1HZ10V',n:'Vol 10 (1s)'},{id:'1HZ25V',n:'Vol 25 (1s)'},{id:'1HZ50V',n:'Vol 50 (1s)'},
-    {id:'1HZ75V',n:'Vol 75 (1s)'},{id:'1HZ100V',n:'Vol 100 (1s)'},{id:'1HZ150V',n:'Vol 150 (1s)'},
-    {id:'1HZ200V',n:'Vol 200 (1s)'},{id:'1HZ250V',n:'Vol 250 (1s)'},{id:'1HZ300V',n:'Vol 300 (1s)'}
+    {id:'1HZ10V',n:'Vol 10 (1s)'},
+    {id:'1HZ25V',n:'Vol 25 (1s)'},
+    {id:'1HZ50V',n:'Vol 50 (1s)'},
+    {id:'1HZ75V',n:'Vol 75 (1s)'},
+    {id:'1HZ100V',n:'Vol 100 (1s)'}
   ]},
   { label:'Volatility', syms:[
-    {id:'R_10',n:'Vol 10'},{id:'R_25',n:'Vol 25'},{id:'R_50',n:'Vol 50'},
-    {id:'R_75',n:'Vol 75'},{id:'R_100',n:'Vol 100'}
-  ]},
-  { label:'Crash/Boom', syms:[
-    {id:'CRASH1000',n:'Crash 1000'},{id:'CRASH500',n:'Crash 500'},{id:'CRASH300',n:'Crash 300'},
-    {id:'BOOM1000',n:'Boom 1000'},{id:'BOOM500',n:'Boom 500'},{id:'BOOM300',n:'Boom 300'}
-  ]},
-  { label:'Step/Range', syms:[
-    {id:'stpRNG',n:'Step Index'},{id:'RDBULL',n:'Range Break Bull 100'},{id:'RDBEAR',n:'Range Break Bear 100'},
-    {id:'RDBULL200',n:'Range Break Bull 200'},{id:'RDBEAR200',n:'Range Break Bear 200'}
-  ]},
-  { label:'Jump', syms:[
-    {id:'JD10',n:'Jump 10'},{id:'JD25',n:'Jump 25'},{id:'JD50',n:'Jump 50'},
-    {id:'JD75',n:'Jump 75'},{id:'JD100',n:'Jump 100'}
+    {id:'R_10',n:'Vol 10'},
+    {id:'R_25',n:'Vol 25'},
+    {id:'R_50',n:'Vol 50'},
+    {id:'R_75',n:'Vol 75'},
+    {id:'R_100',n:'Vol 100'}
   ]}
 ];
 const ALL_SYMS = MARKETS.flatMap(m => m.syms);
