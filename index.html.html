@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deriv Digit Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0c0f;
+  --bg2: #111318;
+  --bg3: #181c23;
+  --bg4: #1e2330;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text: #e8eaf0;
+  --text2: #8b8fa8;
+  --text3: #555870;
+  --green: #22c55e;
+  --green-bg: rgba(34,197,94,0.12);
+  --blue: #3b82f6;
+  --blue-bg: rgba(59,130,246,0.12);
+  --purple: #a78bfa;
+  --purple-bg: rgba(167,139,250,0.12);
+  --amber: #f59e0b;
+  --amber-bg: rgba(245,158,11,0.12);
+  --pink: #f472b6;
+  --pink-bg: rgba(244,114,182,0.12);
+  --red: #f87171;
+  --red-bg: rgba(248,113,113,0.12);
+  --mono: 'Space Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 14px; }
+body { min-height: 100vh; }
+
+/* LAYOUT */
+.app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+.sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.main { padding: 24px; overflow-y: auto; }
+
+/* SIDEBAR */
+.sidebar-header { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+.logo { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.logo-mark { width: 32px; height: 32px; background: var(--green); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 14px; font-weight: 700; color: #000; flex-shrink: 0; }
+.logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+.logo-sub { font-size: 11px; color: var(--text2); }
+.live-badge { display: flex; align-items: center; gap: 6px; padding: 5px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; font-size: 11px; width: fit-content; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #555; flex-shrink: 0; transition: background .3s; }
+.live-dot.on { background: var(--green); animation: pulse 1.8s infinite; }
+.live-dot.err { background: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.85)} }
+#liveText { color: var(--text2); font-family: var(--mono); }
+
+.sidebar-section { padding: 14px 18px 10px; border-bottom: 1px solid var(--border); }
+.sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 8px; }
+.cat-btns { display: flex; flex-wrap: wrap; gap: 4px; }
+.cat-btn { padding: 4px 9px; border-radius: 12px; font-size: 11px; border: 1px solid var(--border2); background: transparent; color: var(--text2); cursor: pointer; transition: all .18s; font-family: var(--sans); }
+.cat-btn:hover { border-color: var(--green); color: var(--text); }
+.cat-btn.on { background: var(--green); border-color: var(--green); color: #000; font-weight: 600; }
+
+.sym-list { display: flex; flex-direction: column; gap: 2px; }
+.sym-item { padding: 7px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; transition: all .18s; color: var(--text2); border: 1px solid transparent; display: flex; align-items: center; justify-content: space-between; }
+.sym-item:hover { background: var(--bg3); color: var(--text); }
+.sym-item.on { background: var(--green-bg); border-color: rgba(34,197,94,.3); color: var(--green); font-weight: 500; }
+.sym-item .sym-price { font-family: var(--mono); font-size: 10px; color: var(--text3); }
+.sym-item.on .sym-price { color: var(--green); opacity: .7; }
+
+.sidebar-settings { padding: 14px 18px; margin-top: auto; border-top: 1px solid var(--border); }
+select, input { background: var(--bg3); border: 1px solid var(--border2); color: var(--text); border-radius: 8px; padding: 7px 10px; font-size: 12px; font-family: var(--sans); width: 100%; cursor: pointer; outline: none; }
+select:focus, input:focus { border-color: var(--green); }
+.setting-row { margin-bottom: 10px; }
+.setting-label { font-size: 11px; color: var(--text2); margin-bottom: 5px; }
+
+/* MAIN TABS */
+.main-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.main-tab { padding: 10px 18px; font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: all .2s; background: none; border-top: none; border-left: none; border-right: none; font-family: var(--sans); }
+.main-tab:hover { color: var(--text); }
+.main-tab.on { color: var(--green); border-bottom-color: var(--green); }
+.tab-pane { display: none; }
+.tab-pane.on { display: block; }
+
+/* METRIC CARDS */
+.metrics-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(130px,1fr)); gap: 10px; margin-bottom: 20px; }
+.metric { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.metric-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
+.metric-val { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--text); line-height: 1; }
+.metric-sub { font-size: 11px; color: var(--text2); margin-top: 4px; font-family: var(--mono); }
+.metric-val.up { color: var(--green); }
+.metric-val.down { color: var(--red); }
+
+/* CIRCLES */
+.section-label { font-size: 10px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+.circles-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+.circles-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.circ-item { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: default; transition: transform .15s; }
+.circ-item:hover { transform: scale(1.1); }
+.disc { width: 56px; height: 56px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid var(--border2); transition: background .4s, border-color .4s, transform .18s; background: var(--bg3); }
+.disc.fl { transform: scale(1.2); }
+.disc.r1 { background: rgba(34,197,94,.18); border-color: var(--green); }
+.disc.r2 { background: rgba(59,130,246,.18); border-color: var(--blue); }
+.disc.r3 { background: rgba(167,139,250,.18); border-color: var(--purple); }
+.disc.r4 { background: rgba(245,158,11,.18); border-color: var(--amber); }
+.disc.r8 { background: rgba(244,114,182,.18); border-color: var(--pink); }
+.disc.r9 { background: rgba(248,113,113,.18); border-color: var(--red); }
+.disc-num { font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--text); line-height: 1; }
+.disc.r1 .disc-num { color: var(--green); }
+.disc.r2 .disc-num { color: var(--blue); }
+.disc.r3 .disc-num { color: var(--purple); }
+.disc.r4 .disc-num { color: var(--amber); }
+.disc.r8 .disc-num { color: var(--pink); }
+.disc.r9 .disc-num { color: var(--red); }
+.disc-pct { font-size: 9px; color: var(--text3); line-height: 1; font-family: var(--mono); }
+.disc.r1 .disc-pct{color:rgba(34,197,94,.7)} .disc.r2 .disc-pct{color:rgba(59,130,246,.7)} .disc.r3 .disc-pct{color:rgba(167,139,250,.7)} .disc.r4 .disc-pct{color:rgba(245,158,11,.7)} .disc.r8 .disc-pct{color:rgba(244,114,182,.7)} .disc.r9 .disc-pct{color:rgba(248,113,113,.7)}
+.circ-count { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+
+/* LEGEND */
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+.leg-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* SIGNAL BOXES */
+.sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.sig-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+.sig-title { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
+.sig-pills { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 8px; }
+.pill { padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid var(--border2); color: var(--text2); background: var(--bg3); transition: all .3s; font-family: var(--mono); }
+.pill.active-green { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+.pill.active-red { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+.pill.active-blue { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+.pill.active-purple { background: var(--purple-bg); border-color: var(--purple); color: var(--purple); }
+.sig-desc { font-size: 11px; color: var(--text2); line-height: 1.6; }
+
+/* BARS */
+.bars-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
+.bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.bar-num { width: 14px; font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--text2); text-align: right; }
+.bar-track { flex: 1; height: 14px; background: var(--bg3); border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
+.bar-fill { height: 100%; border-radius: 7px; transition: width .6s ease, background .4s; min-width: 3px; }
+.bar-count { width: 36px; font-family: var(--mono); font-size: 10px; color: var(--text2); text-align: right; }
+.bar-pct { width: 38px; font-family: var(--mono); font-size: 10px; color: var(--text3); text-align: right; }
+
+/* TICK STRIP */
+.strip-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; }
+.strip { display: flex; gap: 3px; flex-wrap: wrap; max-height: 72px; overflow: hidden; }
+.chip { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 9px; font-weight: 700; flex-shrink: 0; border: 1px solid transparent; }
+.chip.r1{background:var(--green-bg);border-color:rgba(34,197,94,.4);color:var(--green)}
+.chip.r2{background:var(--blue-bg);border-color:rgba(59,130,246,.4);color:var(--blue)}
+.chip.r3{background:var(--purple-bg);border-color:rgba(167,139,250,.4);color:var(--purple)}
+.chip.r4{background:var(--amber-bg);border-color:rgba(245,158,11,.4);color:var(--amber)}
+.chip.r8{background:var(--pink-bg);border-color:rgba(244,114,182,.4);color:var(--pink)}
+.chip.r9{background:var(--red-bg);border-color:rgba(248,113,113,.4);color:var(--red)}
+.chip.rn{background:var(--bg3);border-color:var(--border2);color:var(--text2)}
+
+/* EVEN/ODD SCANNER */
+.eo-summary { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 20px; }
+.eo-summary-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+.scan-prog { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+.eo-valid-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; }
+.eo-valid-badge { display: flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 20px; font-size: 11px; font-weight: 600; font-family: var(--mono); }
+.eo-valid-badge.even { background: var(--green-bg); border: 1px solid rgba(34,197,94,.4); color: var(--green); }
+.eo-valid-badge.odd { background: var(--purple-bg); border: 1px solid rgba(167,139,250,.4); color: var(--purple); }
+.eo-valid-badge .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.eo-scan-note { margin-top: 10px; font-size: 11px; color: var(--text3); }
+
+.eo-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(190px,1fr)); gap: 8px; }
+.eo-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; transition: border-color .3s, background .3s; }
+.eo-card.loading { opacity: .5; }
+.eo-card.valid-even { border-color: rgba(34,197,94,.5); background: rgba(34,197,94,.04); }
+.eo-card.valid-odd { border-color: rgba(167,139,250,.5); background: rgba(167,139,250,.04); }
+.eo-sym-name { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.eo-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600; margin-bottom: 7px; font-family: var(--mono); }
+.eo-badge.even { background: var(--green-bg); color: var(--green); }
+.eo-badge.odd { background: var(--purple-bg); color: var(--purple); }
+.eo-badge.neutral { background: var(--bg3); color: var(--text3); }
+.eo-badge.scanning { background: var(--bg3); color: var(--text3); }
+.eo-mini-discs { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 5px; }
+.mini-disc { width: 17px; height: 17px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 7px; font-weight: 700; border: 1px solid transparent; }
+.mini-disc.r1{background:var(--green-bg);border-color:rgba(34,197,94,.5);color:var(--green)}
+.mini-disc.r2{background:var(--blue-bg);border-color:rgba(59,130,246,.5);color:var(--blue)}
+.mini-disc.r3{background:var(--purple-bg);border-color:rgba(167,139,250,.5);color:var(--purple)}
+.mini-disc.r4{background:var(--amber-bg);border-color:rgba(245,158,11,.5);color:var(--amber)}
+.mini-disc.r8{background:var(--pink-bg);border-color:rgba(244,114,182,.5);color:var(--pink)}
+.mini-disc.r9{background:var(--red-bg);border-color:rgba(248,113,113,.5);color:var(--red)}
+.mini-disc.rn{background:var(--bg3);border-color:var(--border);color:var(--text3)}
+.eo-pct-row { font-size: 10px; color: var(--text3); font-family: var(--mono); }
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .app{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+  .sidebar{position:static;height:auto;overflow-y:visible}
+  .sig-grid{grid-template-columns:1fr}
+  .circles-row{justify-content:center}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-mark">D</div>
+      <div><div class="logo-text">Digit Analyzer</div><div class="logo-sub">Deriv Live Feed</div></div>
+    </div>
+    <div class="live-badge">
+      <div class="live-dot" id="liveDot"></div>
+      <span id="liveText">Connecting…</span>
+    </div>
+  </div>
+
+  <div class="sidebar-section">
+    <div class="sidebar-label">Market type</div>
+    <div class="cat-btns" id="catBtns"></div>
+  </div>
+
+  <div class="sidebar-section" style="flex:1;overflow-y:auto;border-bottom:none">
+    <div class="sidebar-label">Symbol</div>
+    <div class="sym-list" id="symList"></div>
+  </div>
+
+  <div class="sidebar-settings">
+    <div class="setting-row">
+      <div class="setting-label">Tick window</div>
+      <select id="tickSel">
+        <option value="100">100 ticks</option>
+        <option value="500">500 ticks</option>
+        <option value="1000" selected>1000 ticks</option>
+        <option value="2000">2000 ticks</option>
+      </select>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="main-tabs">
+    <button class="main-tab on" onclick="switchTab('analysis')">Digit analysis</button>
+    <button class="main-tab" onclick="switchTab('evenodd')">Even / Odd scanner</button>
+  </div>
+
+  <!-- ANALYSIS PANE -->
+  <div id="pane-analysis" class="tab-pane on">
+    <div class="metrics-row">
+      <div class="metric"><div class="metric-label">Live price</div><div class="metric-val" id="priceVal">—</div><div class="metric-sub" id="lastDigitLbl">last digit —</div></div>
+      <div class="metric"><div class="metric-label">Ticks loaded</div><div class="metric-val" id="tickCount">0</div><div class="metric-sub" id="tickTarget">of 1000</div></div>
+      <div class="metric"><div class="metric-label">Hot digit</div><div class="metric-val" id="hotDigit">—</div><div class="metric-sub" id="hotPct">—</div></div>
+      <div class="metric"><div class="metric-label">Cold digit</div><div class="metric-val" id="coldDigit">—</div><div class="metric-sub" id="coldPct">—</div></div>
+      <div class="metric"><div class="metric-label">Even %</div><div class="metric-val" id="evenPct">—</div><div class="metric-sub">digits 0,2,4,6,8</div></div>
+      <div class="metric"><div class="metric-label">Odd %</div><div class="metric-val" id="oddPct">—</div><div class="metric-sub">digits 1,3,5,7,9</div></div>
+    </div>
+
+    <div class="section-label">Distribution circles</div>
+    <div class="circles-wrap">
+      <div class="circles-row" id="circlesRow"></div>
+    </div>
+
+    <div class="legend">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>Most frequent</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>2nd most</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--purple)"></div>3rd most</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--amber)"></div>4th most</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--bg4);border:1px solid var(--border2)"></div>Middle</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--pink)"></div>2nd least</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>Least frequent</div>
+    </div>
+
+    <div class="sig-grid">
+      <div class="sig-box">
+        <div class="sig-title">Over / Under signal</div>
+        <div class="sig-pills">
+          <div class="pill" id="overPill">Over 4</div>
+          <div class="pill" id="underPill">Under 5</div>
+        </div>
+        <div class="sig-desc" id="ouDesc">Collecting ticks…</div>
+      </div>
+      <div class="sig-box">
+        <div class="sig-title">Even / Odd signal</div>
+        <div class="sig-pills">
+          <div class="pill" id="evenPill">Even</div>
+          <div class="pill" id="oddPill2">Odd</div>
+        </div>
+        <div class="sig-desc" id="eoDesc">Collecting ticks…</div>
+      </div>
+    </div>
+
+    <div class="section-label">Frequency bars</div>
+    <div class="bars-wrap" id="barsWrap"></div>
+
+    <div class="section-label">Recent ticks (last digit)</div>
+    <div class="strip-wrap"><div class="strip" id="tickStrip"></div></div>
+  </div>
+
+  <!-- EVEN/ODD PANE -->
+  <div id="pane-evenodd" class="tab-pane">
+    <div class="eo-summary">
+      <div class="eo-summary-title">
+        <span>Valid signals detected</span>
+        <span class="scan-prog" id="scanProg">—</span>
+      </div>
+      <div class="eo-valid-list" id="validList">
+        <span style="font-size:12px;color:var(--text3)">Click tab to start scanning…</span>
+      </div>
+      <div class="eo-scan-note">
+        Green = Even signal (rank 1 &amp; rank 9 both on even digits). Purple = Odd signal (rank 1 &amp; rank 9 both on odd digits). Strong = blue/amber also on opposite side.
+      </div>
+    </div>
+    <div class="section-label">All markets</div>
+    <div class="eo-grid" id="eoGrid"></div>
+  </div>
+</main>
+</div>
+
+<script>
+const APP_ID = 1089;
+const EVENS = [0,2,4,6,8], ODDS = [1,3,5,7,9];
+
+const MARKETS = [
+  { label:'Vol 1s', syms:[
+    {id:'1HZ10V',n:'Vol 10 (1s)'},{id:'1HZ25V',n:'Vol 25 (1s)'},{id:'1HZ50V',n:'Vol 50 (1s)'},
+    {id:'1HZ75V',n:'Vol 75 (1s)'},{id:'1HZ100V',n:'Vol 100 (1s)'},{id:'1HZ150V',n:'Vol 150 (1s)'},
+    {id:'1HZ200V',n:'Vol 200 (1s)'},{id:'1HZ250V',n:'Vol 250 (1s)'},{id:'1HZ300V',n:'Vol 300 (1s)'}
+  ]},
+  { label:'Volatility', syms:[
+    {id:'R_10',n:'Vol 10'},{id:'R_25',n:'Vol 25'},{id:'R_50',n:'Vol 50'},
+    {id:'R_75',n:'Vol 75'},{id:'R_100',n:'Vol 100'}
+  ]},
+  { label:'Crash/Boom', syms:[
+    {id:'CRASH1000',n:'Crash 1000'},{id:'CRASH500',n:'Crash 500'},{id:'CRASH300',n:'Crash 300'},
+    {id:'BOOM1000',n:'Boom 1000'},{id:'BOOM500',n:'Boom 500'},{id:'BOOM300',n:'Boom 300'}
+  ]},
+  { label:'Step/Range', syms:[
+    {id:'stpRNG',n:'Step Index'},{id:'RDBULL',n:'Range Break Bull 100'},{id:'RDBEAR',n:'Range Break Bear 100'},
+    {id:'RDBULL200',n:'Range Break Bull 200'},{id:'RDBEAR200',n:'Range Break Bear 200'}
+  ]},
+  { label:'Jump', syms:[
+    {id:'JD10',n:'Jump 10'},{id:'JD25',n:'Jump 25'},{id:'JD50',n:'Jump 50'},
+    {id:'JD75',n:'Jump 75'},{id:'JD100',n:'Jump 100'}
+  ]}
+];
+const ALL_SYMS = MARKETS.flatMap(m => m.syms);
+const symPrices = {};
+
+// STATE
+let ws = null, counts = new Array(10).fill(0), history = [], maxTicks = 1000;
+let curSym = '1HZ10V', curCat = 0, lastPrice = null, connected = false;
+let eoWsPool = {}, eoState = {}, eoScanQueue = [], eoScanActive = 0;
+const EO_PARALLEL = 4;
+
+// HELPERS
+function getRanks(c) {
+  const tot = c.reduce((s,v)=>s+v,0);
+  const cls = new Array(10).fill('rn');
+  if(tot < 10) return cls;
+  const s = [...c.map((v,i)=>({v,i}))].sort((a,b)=>b.v-a.v);
+  cls[s[0].i]='r1'; cls[s[1].i]='r2'; cls[s[2].i]='r3'; cls[s[3].i]='r4';
+  cls[s[9].i]='r9'; cls[s[8].i]='r8';
+  return cls;
+}
+function barColor(r){
+  return{r1:'var(--green)',r2:'var(--blue)',r3:'var(--purple)',r4:'var(--amber)',r8:'var(--pink)',r9:'var(--red)',rn:'#2a2e3a'}[r]||'#2a2e3a';
+}
+function checkEOSignal(c) {
+  const tot = c.reduce((s,v)=>s+v,0);
+  if(tot < 50) return {type:'none',label:'Scanning…'};
+  const cls = getRanks(c);
+  const r1d=cls.indexOf('r1'), r9d=cls.indexOf('r9'), r2d=cls.indexOf('r2'), r4d=cls.indexOf('r4');
+  const r1E=EVENS.includes(r1d), r9E=EVENS.includes(r9d);
+  const r1O=ODDS.includes(r1d),  r9O=ODDS.includes(r9d);
+  if(r1E && r9E) {
+    const strong = ODDS.includes(r2d) && ODDS.includes(r4d);
+    return {type:'even', label:'Even'+(strong?' ★':''), strong};
+  }
+  if(r1O && r9O) {
+    const strong = EVENS.includes(r2d) && EVENS.includes(r4d);
+    return {type:'odd', label:'Odd'+(strong?' ★':''), strong};
+  }
+  return {type:'none', label:'No bias'};
+}
+
+// BUILD UI COMPONENTS
+function buildCatBtns() {
+  const el = document.getElementById('catBtns'); el.innerHTML = '';
+  MARKETS.forEach((m,i) => {
+    const b = document.createElement('button');
+    b.className = 'cat-btn' + (i===curCat?' on':'');
+    b.textContent = m.label;
+    b.onclick = () => { curCat=i; buildCatBtns(); buildSymList(); };
+    el.appendChild(b);
+  });
+}
+function buildSymList() {
+  const el = document.getElementById('symList'); el.innerHTML = '';
+  MARKETS[curCat].syms.forEach(s => {
+    const d = document.createElement('div');
+    d.className = 'sym-item' + (s.id===curSym?' on':'');
+    d.innerHTML = `<span>${s.n}</span><span class="sym-price" id="sp-${s.id}">${symPrices[s.id]||''}</span>`;
+    d.onclick = () => { curSym=s.id; buildSymList(); connect(); };
+    el.appendChild(d);
+  });
+}
+function buildCircles() {
+  const w = document.getElementById('circlesRow'); w.innerHTML = '';
+  for(let d=0;d<=9;d++){
+    const div = document.createElement('div'); div.className = 'circ-item';
+    div.innerHTML = `<div class="disc rn" id="disc${d}"><span class="disc-num">${d}</span><span class="disc-pct" id="dpct${d}">0%</span></div><span class="circ-count" id="dcnt${d}">0</span>`;
+    w.appendChild(div);
+  }
+}
+function buildBars() {
+  const w = document.getElementById('barsWrap'); w.innerHTML = '';
+  for(let d=0;d<=9;d++){
+    w.innerHTML += `<div class="bar-row"><span class="bar-num">${d}</span><div class="bar-track"><div class="bar-fill" id="bf${d}" style="width:10%"></div></div><span class="bar-count" id="bc${d}">0</span><span class="bar-pct" id="bpct${d}">0%</span></div>`;
+  }
+}
+
+// UPDATE ANALYSIS UI
+function updateUI() {
+  const tot = counts.reduce((s,v)=>s+v,0);
+  const cls = getRanks(counts);
+  const sorted = [...counts.map((c,i)=>({c,i}))].sort((a,b)=>b.c-a.c);
+  const mx = sorted[0].c || 1;
+
+  for(let d=0;d<=9;d++){
+    const pct = tot>0 ? (counts[d]/tot*100).toFixed(1) : '0.0';
+    const disc = document.getElementById('disc'+d);
+    if(disc) disc.className = 'disc ' + cls[d];
+    const dp = document.getElementById('dpct'+d); if(dp) dp.textContent = pct+'%';
+    const dc = document.getElementById('dcnt'+d); if(dc) dc.textContent = counts[d];
+    const bf = document.getElementById('bf'+d);
+    if(bf){ bf.style.width = Math.max(2,(counts[d]/mx*100)).toFixed(1)+'%'; bf.style.background = barColor(cls[d]); }
+    const bcc = document.getElementById('bc'+d); if(bcc) bcc.textContent = counts[d];
+    const bpct = document.getElementById('bpct'+d); if(bpct) bpct.textContent = pct+'%';
+  }
+
+  document.getElementById('tickCount').textContent = tot;
+
+  if(tot>0){
+    document.getElementById('hotDigit').textContent = sorted[0].i;
+    document.getElementById('hotPct').textContent = (sorted[0].c/tot*100).toFixed(1)+'%';
+    document.getElementById('coldDigit').textContent = sorted[9].i;
+    document.getElementById('coldPct').textContent = (sorted[9].c/tot*100).toFixed(1)+'%';
+    const eTot = EVENS.reduce((s,d)=>s+counts[d],0);
+    const oTot = ODDS.reduce((s,d)=>s+counts[d],0);
+    document.getElementById('evenPct').textContent = (eTot/tot*100).toFixed(1)+'%';
+    document.getElementById('oddPct').textContent = (oTot/tot*100).toFixed(1)+'%';
+    if(tot>=50){ updateOUSignal(sorted,tot); updateEOSignal(cls); }
+  }
+}
+
+function updateOUSignal(sorted,tot){
+  const hot=sorted[0], cold=sorted[9];
+  const hotPct=hot.c/tot*100, coldPct=cold.c/tot*100;
+  const op=document.getElementById('overPill'), up=document.getElementById('underPill'), desc=document.getElementById('ouDesc');
+  let ov=false, un=false;
+  if(hot.i>=5){ op.className='pill active-green'; op.textContent='Over 4 ✓'; ov=true; }
+  else { op.className='pill'; op.textContent='Over 4'; }
+  if(cold.i<=4){ up.className='pill active-red'; up.textContent='Under 5 ✓'; un=true; }
+  else { up.className='pill'; up.textContent='Under 5'; }
+  if(ov&&un) desc.textContent=`Digit ${hot.i} hot (${hotPct.toFixed(1)}%) and digit ${cold.i} cold (${coldPct.toFixed(1)}%) — both Over 4 & Under 5 active.`;
+  else if(ov) desc.textContent=`Digit ${hot.i} dominates at ${hotPct.toFixed(1)}% — distribution favours Over 4.`;
+  else if(un) desc.textContent=`Digit ${cold.i} cold at only ${coldPct.toFixed(1)}% — may favour Under 5.`;
+  else { op.className=up.className='pill'; desc.textContent='Distribution near-uniform. No clear Over/Under bias detected.'; }
+}
+
+function updateEOSignal(cls){
+  const sig = checkEOSignal(counts);
+  const ep=document.getElementById('evenPill'), op=document.getElementById('oddPill2'), desc=document.getElementById('eoDesc');
+  if(sig.type==='even'){
+    ep.className='pill active-blue'; ep.textContent='Even ✓';
+    op.className='pill'; op.textContent='Odd';
+    desc.textContent='Rank 1 (green) & rank 9 (red) both on even digits.'+(sig.strong?' Blue & amber on odd — strong signal.':'');
+  } else if(sig.type==='odd'){
+    ep.className='pill'; ep.textContent='Even';
+    op.className='pill active-purple'; op.textContent='Odd ✓';
+    desc.textContent='Rank 1 (green) & rank 9 (red) both on odd digits.'+(sig.strong?' Blue & amber on even — strong signal.':'');
+  } else {
+    ep.className=op.className='pill'; ep.textContent='Even'; op.textContent='Odd';
+    desc.textContent='Dominant & cold digits span both sides. No clear Even/Odd bias.';
+  }
+}
+
+// TICK HANDLING
+function addTick(price, sym) {
+  const s = price.toString();
+  const digit = parseInt(s[s.length-1], 10);
+  if(isNaN(digit)) return;
+
+  // Update sidebar price for this sym
+  symPrices[sym] = price;
+  const spEl = document.getElementById('sp-'+sym);
+  if(spEl) spEl.textContent = price;
+
+  if(sym !== curSym) return;
+
+  const cls = getRanks(counts);
+  const chip = document.createElement('div');
+  chip.className = 'chip ' + cls[digit]; chip.textContent = digit;
+  const strip = document.getElementById('tickStrip');
+  strip.insertBefore(chip, strip.firstChild);
+  while(strip.children.length > 150) strip.removeChild(strip.lastChild);
+
+  history.unshift({price, digit});
+  counts[digit]++;
+  if(history.length > maxTicks){
+    const old = history.pop();
+    if(old) counts[old.digit] = Math.max(0, counts[old.digit]-1);
+  }
+
+  const pEl = document.getElementById('priceVal');
+  const fc = lastPrice!==null ? (price>lastPrice?'up':price<lastPrice?'down':'') : '';
+  pEl.className = 'metric-val' + (fc?' '+fc:'');
+  pEl.textContent = price;
+  document.getElementById('lastDigitLbl').textContent = 'last digit: ' + digit;
+  lastPrice = price;
+
+  const disc = document.getElementById('disc'+digit);
+  if(disc){ disc.classList.add('fl'); setTimeout(()=>disc.classList.remove('fl'),200); }
+
+  updateUI();
+}
+
+// WEBSOCKET
+function connect() {
+  if(ws){ try{ws.close();}catch(e){} }
+  counts = new Array(10).fill(0); history = []; lastPrice = null;
+  const strip = document.getElementById('tickStrip'); if(strip) strip.innerHTML='';
+  updateUI(); setStatus('connecting');
+
+  ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id='+APP_ID);
+  ws.onopen = () => {
+    setStatus('live');
+    // Request history first, then subscribe for live
+    ws.send(JSON.stringify({ticks_history: curSym, count: maxTicks, end: 'latest', style: 'ticks', subscribe: 1}));
+  };
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if(m.msg_type==='history' && m.history){
+      const prices = m.history.prices || [];
+      prices.slice(-maxTicks).forEach(p => {
+        const s=p.toString(), d=parseInt(s[s.length-1],10);
+        if(!isNaN(d)){ counts[d]++; history.push({price:p,digit:d}); }
+      });
+      const pEl = document.getElementById('priceVal');
+      if(prices.length){ pEl.textContent=prices[prices.length-1]; lastPrice=prices[prices.length-1]; }
+      updateUI();
+    } else if(m.msg_type==='tick' && m.tick){
+      addTick(m.tick.quote, m.tick.symbol);
+    } else if(m.error){
+      setStatus('err', m.error.message);
+    }
+  };
+  ws.onerror = () => setStatus('err','Connection error');
+  ws.onclose = () => { if(connected){ setStatus('err','Disconnected'); connected=false; } };
+}
+
+function setStatus(s, msg){
+  const dot=document.getElementById('liveDot'), txt=document.getElementById('liveText');
+  if(s==='live'){ dot.className='live-dot on'; const sym=ALL_SYMS.find(x=>x.id===curSym); txt.textContent='Live — '+(sym?sym.n:curSym); connected=true; }
+  else if(s==='err'){ dot.className='live-dot err'; txt.textContent=msg||'Error'; connected=false; }
+  else { dot.className='live-dot'; txt.textContent='Connecting…'; connected=false; }
+}
+
+// TAB SWITCHING
+function switchTab(t){
+  document.querySelectorAll('.main-tab').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('on'));
+  document.querySelector(`.main-tab[onclick="switchTab('${t}')"]`).classList.add('on');
+  document.getElementById('pane-'+t).classList.add('on');
+  if(t==='evenodd') startEOScan();
+}
+
+// EO SCANNER
+function buildEOGrid(){
+  const el = document.getElementById('eoGrid'); el.innerHTML='';
+  ALL_SYMS.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'eo-card loading'; card.id = 'eocard-'+s.id;
+    card.innerHTML=`<div class="eo-sym-name">${s.n}</div><span class="eo-badge scanning" id="eobadge-${s.id}">Scanning…</span><div class="eo-mini-discs" id="eomini-${s.id}"></div><div class="eo-pct-row" id="eopct-${s.id}"></div>`;
+    el.appendChild(card);
+  });
+}
+
+function startEOScan(){
+  Object.values(eoWsPool).forEach(w=>{try{w.close();}catch(e){}});
+  eoWsPool={}; eoState={};
+  ALL_SYMS.forEach(s=>{ eoState[s.id]={counts:new Array(10).fill(0),done:false,n:s.n}; });
+  buildEOGrid();
+  updateEOSummary();
+  eoScanQueue=[...ALL_SYMS]; eoScanActive=0;
+  for(let i=0;i<EO_PARALLEL;i++) drainEOQueue();
+}
+
+function drainEOQueue(){
+  if(eoScanQueue.length===0) return;
+  const sym = eoScanQueue.shift();
+  eoScanActive++;
+  scanSym(sym, ()=>{ eoScanActive--; drainEOQueue(); updateEOSummary(); });
+}
+
+function scanSym(sym, cb){
+  const w = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id='+APP_ID);
+  eoWsPool[sym.id] = w;
+  w.onopen = () => {
+    w.send(JSON.stringify({ticks_history:sym.id, count:maxTicks, end:'latest', style:'ticks'}));
+  };
+  w.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if(m.msg_type==='history' && m.history){
+      const prices = m.history.prices||[];
+      const st = eoState[sym.id];
+      prices.slice(-maxTicks).forEach(p=>{
+        const s=p.toString(), d=parseInt(s[s.length-1],10);
+        if(!isNaN(d)) st.counts[d]++;
+      });
+      st.done=true;
+      updateEOCard(sym.id);
+      try{w.close();}catch(e){}
+      cb();
+    } else if(m.error){
+      eoState[sym.id].done=true; eoState[sym.id].error=true;
+      updateEOCard(sym.id);
+      try{w.close();}catch(e){}
+      cb();
+    }
+  };
+  w.onerror=()=>{ eoState[sym.id].done=true; eoState[sym.id].error=true; updateEOCard(sym.id); try{w.close();}catch(e){} cb(); };
+  setTimeout(()=>{ if(!eoState[sym.id].done){ eoState[sym.id].done=true; eoState[sym.id].error=true; updateEOCard(sym.id); try{w.close();}catch(e){} cb(); } },12000);
+}
+
+function updateEOCard(id){
+  const st=eoState[id]; if(!st) return;
+  const card=document.getElementById('eocard-'+id);
+  const badge=document.getElementById('eobadge-'+id);
+  const mini=document.getElementById('eomini-'+id);
+  const pctEl=document.getElementById('eopct-'+id);
+  if(!card) return;
+  card.classList.remove('loading');
+  if(st.error){ if(badge){badge.className='eo-badge neutral';badge.textContent='No data';} return; }
+  const tot=st.counts.reduce((s,v)=>s+v,0);
+  const cls=getRanks(st.counts);
+  const sig=checkEOSignal(st.counts);
+  card.className='eo-card'+(sig.type==='even'?' valid-even':sig.type==='odd'?' valid-odd':'');
+  if(badge){ badge.className='eo-badge '+(sig.type==='even'?'even':sig.type==='odd'?'odd':'neutral'); badge.textContent=sig.label; }
+  if(mini){
+    mini.innerHTML='';
+    for(let d=0;d<=9;d++){
+      const dd=document.createElement('div'); dd.className='mini-disc '+cls[d]; dd.textContent=d;
+      mini.appendChild(dd);
+    }
+  }
+  if(pctEl&&tot>0){
+    const eT=EVENS.reduce((s,d)=>s+st.counts[d],0);
+    const oT=ODDS.reduce((s,d)=>s+st.counts[d],0);
+    pctEl.textContent=`E:${(eT/tot*100).toFixed(1)}% O:${(oT/tot*100).toFixed(1)}% (${tot}t)`;
+  }
+}
+
+function updateEOSummary(){
+  const done=ALL_SYMS.filter(s=>eoState[s.id]&&eoState[s.id].done).length;
+  document.getElementById('scanProg').textContent=`${done}/${ALL_SYMS.length} scanned`;
+  const evenSigs=[], oddSigs=[];
+  ALL_SYMS.forEach(s=>{
+    const st=eoState[s.id];
+    if(st&&st.done&&!st.error){
+      const sig=checkEOSignal(st.counts);
+      if(sig.type==='even') evenSigs.push({n:s.n,strong:sig.strong});
+      else if(sig.type==='odd') oddSigs.push({n:s.n,strong:sig.strong});
+    }
+  });
+  const row=document.getElementById('validList'); row.innerHTML='';
+  if(evenSigs.length===0&&oddSigs.length===0){
+    row.innerHTML='<span style="font-size:12px;color:var(--text3)">No valid signals yet…</span>'; return;
+  }
+  evenSigs.forEach(s=>{
+    const d=document.createElement('div'); d.className='eo-valid-badge even';
+    d.innerHTML=`<span class="badge-dot"></span>${s.n}${s.strong?' ★':''}`;
+    row.appendChild(d);
+  });
+  oddSigs.forEach(s=>{
+    const d=document.createElement('div'); d.className='eo-valid-badge odd';
+    d.innerHTML=`<span class="badge-dot"></span>${s.n}${s.strong?' ★':''}`;
+    row.appendChild(d);
+  });
+}
+
+// INIT
+document.getElementById('tickSel').addEventListener('change', function(){
+  maxTicks=parseInt(this.value);
+  document.getElementById('tickTarget').textContent='of '+this.value;
+  connect();
+});
+
+buildCatBtns();
+buildSymList();
+buildCircles();
+buildBars();
+connect();
+</script>
+</body>
+</html>
